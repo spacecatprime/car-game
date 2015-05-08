@@ -13,3 +13,9 @@ car-game-client/Assets/Vehicles
 car-game-client/ProjectSettings
 car-game-client/Temp
 car-game-client/Assets/RoadTool
+car-game-client/_archive/
+car-game-client/obj/
+*.csproj
+*.sln
+*.suo
+car-game-client/Assets/

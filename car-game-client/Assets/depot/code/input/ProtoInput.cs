@@ -42,5 +42,13 @@ public class ProtoInput : MonoBehaviour
 			var nextCell = m_car.Cell.GetCellInDirection(GGDirection.Left);
 			m_car.CachedTransform.position = nextCell.CenterPoint3D;
 		}
+		else if(Input.GetKeyUp(KeyCode.Delete))
+		{
+			Car.Rotate(0, -90, 0);
+		}
+		else if(Input.GetKeyUp(KeyCode.End))
+		{
+			Car.Rotate(0, 90, 0);
+		}
 	}
 }

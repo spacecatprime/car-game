@@ -32,3 +32,5 @@ car-game-client/_archive/car-game-client.sln
 *.suo
 *.unityproj
 *.userprefs
+car-game-client/Assets/Plugins/
+car-game-client/Assets/Plugins.meta

@@ -69,7 +69,8 @@ public class ActionPanel : MonoBehaviour
         else
         {
             m_activePlayback = true;
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.TurnByTurn, m_actionList);
+//            m_trafficLogic.SetOperation(TrafficLogic.Operation.TurnByTurn, m_actionList);
+            m_trafficLogic.SetOperation(TrafficLogic.Operation.Playback, m_actionList);
         }
     }
 

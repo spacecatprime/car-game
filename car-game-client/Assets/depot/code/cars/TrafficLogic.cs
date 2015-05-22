@@ -12,12 +12,16 @@ class TrafficLogic : MonoBehaviour
     public Transform car = null;
     public Transform notification = null;
 
+    public AudioClip sfxForward;
+    public AudioClip sfxBonk;
+    public AudioClip sfxTurn;
+    public AudioSource sfxSource;
+    
     //
     // playback data
     Vector3 m_originalPos;
     Quaternion m_originalRot;
     GGObject m_car;
-    GGGrid m_grid;
     NotificationPanel m_noteboard;
 
     public enum Operation
@@ -54,6 +58,11 @@ class TrafficLogic : MonoBehaviour
 
     public event Action<Result> OnOperationChange;
     public event Action<Result> OnStateChange;
+
+    void FinishLineTriggered(object line)
+    {
+        m_noteboard.AddNote("Finish Hit!");
+    }
 
     //
     // action data such as moves and cursor into moves
@@ -101,6 +110,7 @@ class TrafficLogic : MonoBehaviour
             case Operation.Reset:
                 ResetBoard();
                 Mode = Operation.Reset;
+                sfxSource.PlayOneShot(sfxBonk);
                 break;
 
             case Operation.Playback:
@@ -131,6 +141,7 @@ class TrafficLogic : MonoBehaviour
         {
             ResetBoard();
             m_noteboard.AddNote(op.ToString());
+            State = OperationState.Stepped;
             return true;
         }
         else if (op == Operation.StepUp)
@@ -141,6 +152,7 @@ class TrafficLogic : MonoBehaviour
                 OperateCar(m_moveCursor.Current);
             }
             m_noteboard.AddNote(op.ToString());
+            State = OperationState.Stepped;
             return isOk;
         }
         else if (op == Operation.StepBack)
@@ -152,6 +164,8 @@ class TrafficLogic : MonoBehaviour
                 m_moveCursor.MoveNext();
                 pos--;
             }
+            State = OperationState.Stepped;
+            return true;
         }
         return false;
     }
@@ -177,21 +191,30 @@ class TrafficLogic : MonoBehaviour
             dir = GGDirection.Down;
         }
         var nextCell = m_car.Cell.GetCellInDirection(dir);
-        m_car.CachedTransform.position = nextCell.CenterPoint3D;
-        m_car.Update();
+        if (nextCell.IsPathable == false)
+        {
+            m_noteboard.AddNote("Oops!");
+            sfxSource.PlayOneShot(this.sfxBonk);
+            State = OperationState.InError;
+        }
+        else
+        {
+            iTween.MoveTo(m_car.gameObject, nextCell.CenterPoint3D, 1.0f);
+            sfxSource.PlayOneShot(this.sfxForward);
+        }
     }
 
     private void OperateCar(MoveType moveType)
     {
         if( moveType.kind == MoveType.MoveKind.TurnLeft)
         {
-            m_car.CachedTransform.Rotate(m_car.CachedTransform.up, -90);
-            m_car.Update();
+            iTween.RotateAdd(m_car.gameObject, new Vector3(0, -90, 0), 1.0f);
+            sfxSource.PlayOneShot(this.sfxTurn);
         }
         else if (moveType.kind == MoveType.MoveKind.TurnRight)
         {
-            m_car.CachedTransform.Rotate(m_car.CachedTransform.up, 90);
-            m_car.Update();
+            iTween.RotateAdd(m_car.gameObject, new Vector3(0, 90, 0), 1.0f);
+            sfxSource.PlayOneShot(this.sfxTurn);
         }
         else
         {
@@ -201,7 +224,18 @@ class TrafficLogic : MonoBehaviour
 
     private bool OperateRealTime(Operation op)
     {
-        throw new NotImplementedException();
+        StartCoroutine(MoveAllMoves());
+        State = OperationState.Playing;
+        return true;
+    }
+
+    private IEnumerator<WaitForSeconds> MoveAllMoves()
+    {
+        foreach (var move in m_moveList)
+        {
+            OperateCar(move);
+            yield return new WaitForSeconds(1);
+        }
     }
 
     private void ResetBoard()

@@ -16,6 +16,8 @@ class TrafficLogic : MonoBehaviour
     public AudioClip sfxBonk;
     public AudioClip sfxTurn;
     public AudioSource sfxSource;
+
+    public GameObject explosionPrefab;
     
     //
     // playback data
@@ -193,6 +195,7 @@ class TrafficLogic : MonoBehaviour
         var nextCell = m_car.Cell.GetCellInDirection(dir);
         if (nextCell.IsPathable == false)
         {
+            GameObject.Instantiate(explosionPrefab, car.position, Quaternion.identity);
             m_noteboard.AddNote("Oops!");
             sfxSource.PlayOneShot(this.sfxBonk);
             State = OperationState.InError;

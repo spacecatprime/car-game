@@ -70,6 +70,7 @@ class TrafficLogic : MonoBehaviour
     // action data such as moves and cursor into moves
     private List<MoveType> m_moveList = new List<MoveType>();
     private List<MoveType>.Enumerator m_moveCursor;
+    private Coroutine m_moveCoroutine;
 
     public bool SetOperation(Operation op)
     {
@@ -227,7 +228,7 @@ class TrafficLogic : MonoBehaviour
 
     private bool OperateRealTime(Operation op)
     {
-        StartCoroutine(MoveAllMoves());
+        m_moveCoroutine = StartCoroutine(MoveAllMoves());
         State = OperationState.Playing;
         return true;
     }
@@ -243,9 +244,18 @@ class TrafficLogic : MonoBehaviour
 
     private void ResetBoard()
     {
+        // reset the car
+        iTween.MoveTo(m_car.gameObject, m_originalPos, 1.0f);
+        iTween.RotateTo(m_car.gameObject, m_originalRot.eulerAngles, 1.0f);
+
+        // reset the recorded move list
+        m_moveList.Clear();
         m_moveCursor = m_moveList.GetEnumerator();
-        m_car.CachedTransform.position = new Vector3(m_originalPos.x, m_originalPos.y, m_originalPos.z);
-        m_car.CachedTransform.rotation = new Quaternion(m_originalRot.x, m_originalRot.y, m_originalRot.z, m_originalRot.w);
+        if (m_moveCoroutine != null)
+        {
+            StopCoroutine(m_moveCoroutine);
+            m_moveCoroutine = null;
+        }
     }
 
     void Start () 

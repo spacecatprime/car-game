@@ -12,13 +12,42 @@ public class ActionPanel : MonoBehaviour
     private List<RectTransform> m_actionList = new List<RectTransform>();
     private TrafficLogic m_trafficLogic;
 
-    // TMP
+    private Button buttonStart;
+    private Button buttonStop;
+    private Button buttonUndo;
+    private List<Button> buttonListOperations;
+    
+    // Active Playback or not
     private bool m_activePlayback = false;
 
 	void Start () 
 	{
         m_trafficLogic = logic.GetComponent<TrafficLogic>();
-	}
+
+        buttonStart = GetButtonByTag("GameController");
+        buttonStop = GetButtonByTag("Finish");
+        buttonUndo = GetButtonByTag("undo");
+        buttonListOperations = GetButtonListByTag("operation");
+        UpdateVisible();
+    }
+
+    private void UpdateVisible()
+    {
+        if (m_activePlayback)
+        {
+            buttonStart.gameObject.SetActive(false);
+            buttonStop.gameObject.SetActive(true);
+            buttonUndo.gameObject.SetActive(false);
+            buttonListOperations.ForEach(b => b.gameObject.SetActive(false));
+        }
+        else
+        {
+            buttonStart.gameObject.SetActive(true);
+            buttonStop.gameObject.SetActive(false);
+            buttonUndo.gameObject.SetActive(true);
+            buttonListOperations.ForEach(b => b.gameObject.SetActive(true));
+        }
+    }
 	
 	void Update () 
 	{
@@ -57,20 +86,53 @@ public class ActionPanel : MonoBehaviour
         PushButton("ui_go_forward");
     }
 
+    private Button GetButtonByTag(string tag)
+    {
+        Button[] list = this.GetComponentsInChildren<Button>();
+        foreach (Button b in list)
+        {
+            if (b.tag == tag)
+            {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    private List<Button> GetButtonListByTag(string tag)
+    {
+        var buttonList = new List<Button>();
+        Button[] list = this.GetComponentsInChildren<Button>();
+        foreach (Button b in list)
+        {
+            if (b.tag == tag)
+            {
+                buttonList.Add(b);
+            }
+        }
+        return buttonList;
+    }
+
+    public void DoStep()
+    {
+        m_trafficLogic.SetOperation(TrafficLogic.Operation.StepUp);
+    }
+
 	public void DoExecute()
 	{
-        //PushButton("ui_go_execute");
-        // should be changed to TrafficLogic.Operation.Playback at some point
-
-        if (m_activePlayback)
-        {
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.StepUp);
-        }
-        else
+        if (!m_activePlayback)
         {
             m_activePlayback = true;
-//            m_trafficLogic.SetOperation(TrafficLogic.Operation.TurnByTurn, m_actionList);
+            UpdateVisible();
             m_trafficLogic.SetOperation(TrafficLogic.Operation.Playback, m_actionList);
+        }
+    }
+
+    public void DoUndo()
+    {
+        if (!m_activePlayback)
+        {
+            PopButton();
         }
     }
 
@@ -82,11 +144,9 @@ public class ActionPanel : MonoBehaviour
             m_actionList.Clear();
 
             m_activePlayback = false;
+            UpdateVisible();
+
             m_trafficLogic.SetOperation(TrafficLogic.Operation.Reset);
-        }
-        else
-        {
-            PopButton();
         }
     }
 }

@@ -1,0 +1,9 @@
+Mobile UI samples: http://jnamobile.com/samples/ColorableMobileUI.html
+
+https://unity3d.com/learn/tutorials/modules/intermediate/live-training-archive/panels-panes-windows
+
+What to build:
+* dialog box - title, content, one or two buttons
+* result box - title, content, 1 to 4 goals, buttons (retry, back)
+* tab control - title, tabbed panels, tab buttons
+* button menu - title, panel of buttons

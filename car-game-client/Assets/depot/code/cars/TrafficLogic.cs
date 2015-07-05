@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-class TrafficLogic : MonoBehaviour 
+public class TrafficLogic : MonoBehaviour 
 {
     //
     // to be set by editor
@@ -41,29 +41,35 @@ class TrafficLogic : MonoBehaviour
     };
     public Operation Mode { get; private set; }
 
-    public enum OperationState
+    public enum LogicState
     {
-        Idle,
+        Idle,       // nothing happening, yet
         Playing,    // real-time playback in progress
-        Paused,     // paused during real-time playback
-        Stepped,    // waiting for the next Step op command
-        Finished,   // done as far as the steps can be
-        InError     // car crash or some logic error happened
+        Succeeded,  // Succeeded - done as far as the steps can be
+        Failed      // Failed - car crash or some logic error happened
     };
-    public OperationState State { get; private set; }
-
-    public class Result
+    private LogicState m_state = LogicState.Idle;
+    public LogicState State 
     {
-        public bool inError { get; set; }
-        public TrafficLogic logic { get; set; }
+        get
+        {
+            return m_state;
+        }
+        private set
+        {
+            if (OnStateChange != null && m_state != value)
+            {
+                OnStateChange(value);
+            }
+            m_state = value;
+        }
     }
-
-    public event Action<Result> OnOperationChange;
-    public event Action<Result> OnStateChange;
+    public event Action<LogicState> OnStateChange;
 
     void FinishLineTriggered(object line)
     {
         m_noteboard.AddNote("Finish Hit!");
+        State = LogicState.Succeeded;
     }
 
     //
@@ -144,7 +150,6 @@ class TrafficLogic : MonoBehaviour
         {
             ResetBoard();
             m_noteboard.AddNote(op.ToString());
-            State = OperationState.Stepped;
             return true;
         }
         else if (op == Operation.StepUp)
@@ -155,7 +160,6 @@ class TrafficLogic : MonoBehaviour
                 OperateCar(m_moveCursor.Current);
             }
             m_noteboard.AddNote(op.ToString());
-            State = OperationState.Stepped;
             return isOk;
         }
         else if (op == Operation.StepBack)
@@ -167,7 +171,6 @@ class TrafficLogic : MonoBehaviour
                 m_moveCursor.MoveNext();
                 pos--;
             }
-            State = OperationState.Stepped;
             return true;
         }
         return false;
@@ -199,7 +202,7 @@ class TrafficLogic : MonoBehaviour
             GameObject.Instantiate(explosionPrefab, car.position, Quaternion.identity);
             m_noteboard.AddNote("Oops!");
             sfxSource.PlayOneShot(this.sfxBonk);
-            State = OperationState.InError;
+            State = LogicState.Failed;
         }
         else
         {
@@ -228,8 +231,8 @@ class TrafficLogic : MonoBehaviour
 
     private bool OperateRealTime(Operation op)
     {
+        State = LogicState.Playing;
         m_moveCoroutine = StartCoroutine(MoveAllMoves());
-        State = OperationState.Playing;
         return true;
     }
 
@@ -237,8 +240,17 @@ class TrafficLogic : MonoBehaviour
     {
         foreach (var move in m_moveList)
         {
+            if (State != LogicState.Playing)
+            {
+                break;
+            }
             OperateCar(move);
             yield return new WaitForSeconds(1);
+        }
+        if (State == LogicState.Playing)
+        {
+            State = LogicState.Failed;
+            m_noteboard.AddNote("Out of moves...");
         }
     }
 
@@ -260,7 +272,7 @@ class TrafficLogic : MonoBehaviour
 
     void Start () 
 	{
-        State = OperationState.Idle;
+        State = LogicState.Idle;
         Mode = Operation.Reset;
         m_originalPos = car.transform.position;
         m_originalRot = car.transform.rotation;

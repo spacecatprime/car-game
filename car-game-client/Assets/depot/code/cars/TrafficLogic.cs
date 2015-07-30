@@ -11,14 +11,8 @@ public class TrafficLogic : MonoBehaviour
     public Transform grid = null;
     public Transform car = null;
     public Transform notification = null;
+    public FXManager fxManager = null;
 
-    public AudioClip sfxForward;
-    public AudioClip sfxBonk;
-    public AudioClip sfxTurn;
-    public AudioSource sfxSource;
-
-    public GameObject explosionPrefab;
-    
     //
     // playback data
     Vector3 m_originalPos;
@@ -40,6 +34,8 @@ public class TrafficLogic : MonoBehaviour
         StepBack
     };
     public Operation Mode { get; private set; }
+
+    #region LOGIC STATE
 
     public enum LogicState
     {
@@ -66,11 +62,13 @@ public class TrafficLogic : MonoBehaviour
     }
     public event Action<LogicState> OnStateChange;
 
-    void FinishLineTriggered(object line)
+    void FinishLineTriggered()
     {
         m_noteboard.AddNote("Finish Hit!");
         State = LogicState.Succeeded;
     }
+
+    #endregion
 
     //
     // action data such as moves and cursor into moves
@@ -119,7 +117,7 @@ public class TrafficLogic : MonoBehaviour
             case Operation.Reset:
                 ResetBoard();
                 Mode = Operation.Reset;
-                sfxSource.PlayOneShot(sfxBonk);
+                fxManager.audioFX.PlaySound(AudioFX.Sounds.Bonk);
                 break;
 
             case Operation.Playback:
@@ -197,17 +195,17 @@ public class TrafficLogic : MonoBehaviour
             dir = GGDirection.Down;
         }
         var nextCell = m_car.Cell.GetCellInDirection(dir);
-        if (nextCell.IsPathable == false)
+        if (nextCell == null || nextCell.IsPathable == false)
         {
-            GameObject.Instantiate(explosionPrefab, car.position, Quaternion.identity);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Bonk);
+            fxManager.particleFX.Run(ParticleFX.Effects.Explosion, car.position);
             m_noteboard.AddNote("Oops!");
-            sfxSource.PlayOneShot(this.sfxBonk);
             State = LogicState.Failed;
         }
         else
         {
             iTween.MoveTo(m_car.gameObject, nextCell.CenterPoint3D, 1.0f);
-            sfxSource.PlayOneShot(this.sfxForward);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Forward);
         }
     }
 
@@ -216,12 +214,12 @@ public class TrafficLogic : MonoBehaviour
         if( moveType.kind == MoveType.MoveKind.TurnLeft)
         {
             iTween.RotateAdd(m_car.gameObject, new Vector3(0, -90, 0), 1.0f);
-            sfxSource.PlayOneShot(this.sfxTurn);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Turn);
         }
         else if (moveType.kind == MoveType.MoveKind.TurnRight)
         {
             iTween.RotateAdd(m_car.gameObject, new Vector3(0, 90, 0), 1.0f);
-            sfxSource.PlayOneShot(this.sfxTurn);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Turn);
         }
         else
         {

@@ -7,3 +7,9 @@ What to build:
 * result box - title, content, 1 to 4 goals, buttons (retry, back)
 * tab control - title, tabbed panels, tab buttons
 * button menu - title, panel of buttons
+
+http://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/mars/R/eclipse-jee-mars-R-win32-x86_64.zip
+
+http://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/luna/SR2/eclipse-jee-luna-SR2-win32-x86_64.zip
+
+C:\Users\Allen\workspace\heroku

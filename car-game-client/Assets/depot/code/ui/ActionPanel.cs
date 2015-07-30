@@ -7,10 +7,9 @@ using System.Collections.Generic;
 public class ActionPanel : MonoBehaviour 
 {
     public RectTransform playBoard;
-    public Transform logic;
+    public GameLevel gameLevel;
 
     private List<RectTransform> m_actionList = new List<RectTransform>();
-    private TrafficLogic m_trafficLogic;
 
     private Button buttonStart;
     private Button buttonStop;
@@ -22,8 +21,6 @@ public class ActionPanel : MonoBehaviour
 
 	void Start () 
 	{
-        m_trafficLogic = logic.GetComponent<TrafficLogic>();
-
         buttonStart = GetButtonByTag("GameController");
         buttonStop = GetButtonByTag("Finish");
         buttonUndo = GetButtonByTag("undo");
@@ -56,9 +53,10 @@ public class ActionPanel : MonoBehaviour
     private void PushButton(string prefabName)
     {
         RectTransform prefab = Resources.Load<RectTransform>(prefabName);
-        RectTransform button = Instantiate<RectTransform>(prefab);
-        button.SetParent(playBoard);
-        m_actionList.Add(button);
+        RectTransform actionImg = Instantiate<RectTransform>(prefab);
+        GameObject.Destroy(actionImg.gameObject.GetComponent<Button>());
+        actionImg.SetParent(playBoard);
+        m_actionList.Add(actionImg);
     }
 
     private void PopButton()
@@ -115,7 +113,7 @@ public class ActionPanel : MonoBehaviour
 
     public void DoStep()
     {
-        m_trafficLogic.SetOperation(TrafficLogic.Operation.StepUp);
+        gameLevel.SendMessage("StepUp", null, SendMessageOptions.RequireReceiver);
     }
 
 	public void DoExecute()
@@ -124,7 +122,7 @@ public class ActionPanel : MonoBehaviour
         {
             m_activePlayback = true;
             UpdateVisible();
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.Playback, m_actionList);
+            gameLevel.SendMessage("Playback", m_actionList, SendMessageOptions.RequireReceiver);
         }
     }
 
@@ -145,8 +143,7 @@ public class ActionPanel : MonoBehaviour
 
             m_activePlayback = false;
             UpdateVisible();
-
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.Reset);
+            gameLevel.SendMessage("Reset", null, SendMessageOptions.RequireReceiver);
         }
     }
 }

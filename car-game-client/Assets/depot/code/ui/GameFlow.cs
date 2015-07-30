@@ -11,9 +11,10 @@ using System;
 public class GameFlow : MonoBehaviour 
 {
     public WindowManager windowManager;
-    public TrafficLogic trafficLogic;
+    public List<GameLevel> gameLevels = new List<GameLevel>();
+    public ActionPanel actionPanel;
 
-    private class DialogBoxHookup
+    public class DialogBoxHookup
     {
         protected GameObject m_diaglogBox;
         protected WindowManager m_windowManager;
@@ -24,6 +25,23 @@ public class GameFlow : MonoBehaviour
             m_diaglogBox = winMgr.PushWindow("DialogBox", data);
             m_diaglogBox.GetComponent<DialogBox>().OnButton1 += ButtonOne;
             m_diaglogBox.GetComponent<DialogBox>().OnButton2 += ButtonTwo;
+            m_diaglogBox.GetComponent<DialogBox>().OnHide += OnConceal;
+            m_diaglogBox.GetComponent<DialogBox>().OnShow += OnReveal;
+        }
+
+        public DialogBoxHookup(WindowManager winMgr)
+        {
+            m_windowManager = winMgr;
+        }
+
+        public void Push(string title, string content, string button1, string button2)
+        {
+            List<string> data = new List<string> { title, content, button1, button2 };
+            m_diaglogBox = m_windowManager.PushWindow("DialogBox", data);
+            m_diaglogBox.GetComponent<DialogBox>().OnButton1 += ButtonOne;
+            m_diaglogBox.GetComponent<DialogBox>().OnButton2 += ButtonTwo;
+            m_diaglogBox.GetComponent<DialogBox>().OnHide += OnConceal;
+            m_diaglogBox.GetComponent<DialogBox>().OnShow += OnReveal;
         }
 
         public virtual void ButtonOne(object data)
@@ -35,9 +53,17 @@ public class GameFlow : MonoBehaviour
         {
             m_windowManager.PopWindow();
         }
+
+        public virtual void OnConceal(object data)
+        {
+        }
+
+        public virtual void OnReveal(object data)
+        {
+        }
     }
 
-    private class Welcome : DialogBoxHookup
+    public class Welcome : DialogBoxHookup
     {
         static string title = "Welcome to the Game";
         static string content = "Welcome to the Car Game! We are <material=2>texturally</material> amused";
@@ -50,20 +76,32 @@ public class GameFlow : MonoBehaviour
         }
     }
 
-    private class YouWin : DialogBoxHookup
+    public class YouWin : DialogBoxHookup
     {
         static string title = "Level Complete";
         static string content = "Well done.";
         static string okay = "okay";
         static List<string> data = new List<string> { title, content, okay, "" };
 
+        public GameObject nextLevel;
+
         public YouWin(WindowManager winMgr)
             : base(winMgr, data)
         {
         }
+
+        public override void ButtonOne(object data)
+        {
+            base.ButtonOne(data);
+        }
+
+        public override void ButtonTwo(object data)
+        {
+            base.ButtonTwo(data);
+        }
     }
 
-    private class YouLost : DialogBoxHookup
+    public class YouLost : DialogBoxHookup
     {
         static string title = "Level Failed";
         static string content = "Sorry. Try again.";
@@ -79,9 +117,11 @@ public class GameFlow : MonoBehaviour
 	// Use this for initialization
 	void Start () 
     {
+        this.StartLevel(gameLevels[0]);
+
+        // show game welcome
         new Welcome(this.windowManager);
-        trafficLogic.OnStateChange += new System.Action<TrafficLogic.LogicState>(trafficLogic_OnStateChange);
-	}
+    }
 
     void trafficLogic_OnStateChange(TrafficLogic.LogicState obj)
     {
@@ -104,5 +144,25 @@ public class GameFlow : MonoBehaviour
 	// Update is called once per frame
 	void Update () 
     {
-	}
+        if (Input.GetKeyUp(KeyCode.F1))
+        {
+            StartLevel(gameLevels[0]);
+        }
+        else if (Input.GetKeyUp(KeyCode.F2))
+        {
+            StartLevel(gameLevels[1]);
+        }
+    }
+
+    public void SetTrafficLogic(object trafficLogicInput)
+    {
+        TrafficLogic nextTrafficLogic = trafficLogicInput as TrafficLogic;
+        nextTrafficLogic.OnStateChange += new System.Action<TrafficLogic.LogicState>(trafficLogic_OnStateChange);
+    }
+
+    private void StartLevel(GameLevel gameLevel)
+    {
+        actionPanel.gameLevel = gameLevel;
+        gameLevel.SendMessage("StartLevel", this);
+    }
 }

@@ -75,19 +75,29 @@ public class DialogBox : MonoBehaviour, UIWindowBase
         SetupContent(input[0], input[1], input[2], input[3]);
     }
 
-    public void Hide()
+    public void Conceal()
     {
         if (OnHide != null)
         {
             OnHide(this);
         }
+        Renderer rend = this.gameObject.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.enabled = false;
+        }
     }
 
-    public void Show()
+    public void Reveal()
     {
         if (OnShow != null)
         {
             OnShow(this);
+        }
+        Renderer rend = this.gameObject.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.enabled = true;
         }
     }
 

@@ -6,7 +6,7 @@ using System.Collections;
 /// </summary>
 public interface UIWindowBase
 {
-    void Hide();
-    void Show();
+    void Conceal();
+    void Reveal();
     void SetupData(object data);
 }

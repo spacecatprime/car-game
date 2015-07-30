@@ -9,7 +9,7 @@ public class WindowManager : MonoBehaviour
 {
     public Canvas parentCanvas;
 
-    private Queue<GameObject> m_menuQueue = new Queue<GameObject>();
+    private Stack<GameObject> m_menuStack = new Stack<GameObject>();
     private Dictionary<string, GameObject> m_windowTypeCache = new Dictionary<string, GameObject>();
 
 	void Start () 
@@ -40,33 +40,38 @@ public class WindowManager : MonoBehaviour
 
         GameObject newWindow = GameObject.Instantiate(gameObj);
         newWindow.transform.SetParent(parentCanvas.transform, false);
+
+        if (m_menuStack.Count > 0)
+        {
+            GameObject currentWindow = m_menuStack.Peek();
+            currentWindow.SendMessage("Conceal", this, SendMessageOptions.RequireReceiver);
+            currentWindow.SetActive(false);
+        }
+
+        m_menuStack.Push(newWindow);
         newWindow.SetActive(true);
         newWindow.SendMessage("SetupData", data, SendMessageOptions.RequireReceiver);
-
-        if (m_menuQueue.Count > 0)
-        {
-            m_menuQueue.Peek().SetActive(false);
-        }
-        m_menuQueue.Enqueue(newWindow);
+        newWindow.SendMessage("Reveal", this, SendMessageOptions.RequireReceiver);
         return newWindow;
     }
 
     public void PopWindow()
     {
         // nix current queued window
-        if (m_menuQueue.Count > 0)
+        if (m_menuStack.Count > 0)
         {
-            GameObject currentWindow = m_menuQueue.Dequeue();
-            currentWindow.SendMessage("Hide", this, SendMessageOptions.RequireReceiver);            
+            GameObject currentWindow = m_menuStack.Pop();
+            currentWindow.SetActive(true);
+            currentWindow.SendMessage("Conceal", this, SendMessageOptions.RequireReceiver);
             GameObject.Destroy(currentWindow);
         }
 
         // enable then next in the queue, if any
-        if (m_menuQueue.Count > 0)
+        if (m_menuStack.Count > 0)
         {
-            GameObject nextWindow = m_menuQueue.Peek();
+            GameObject nextWindow = m_menuStack.Peek();
             nextWindow.SetActive(true);
-            nextWindow.SendMessage("Show", this, SendMessageOptions.RequireReceiver);
+            nextWindow.SendMessage("Reveal", this, SendMessageOptions.RequireReceiver);
         }
     }
 }

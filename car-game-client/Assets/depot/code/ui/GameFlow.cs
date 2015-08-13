@@ -83,7 +83,7 @@ public class GameFlow : MonoBehaviour
         static string okay = "okay";
         static List<string> data = new List<string> { title, content, okay, "" };
 
-        public GameObject nextLevel;
+        public Action nextLevel;
 
         public YouWin(WindowManager winMgr)
             : base(winMgr, data)
@@ -93,11 +93,27 @@ public class GameFlow : MonoBehaviour
         public override void ButtonOne(object data)
         {
             base.ButtonOne(data);
+            if (nextLevel != null)
+            {
+                nextLevel.Invoke();
+            }
         }
 
         public override void ButtonTwo(object data)
         {
             base.ButtonTwo(data);
+        }
+    }
+
+    public class YouWinTheGame : DialogBoxHookup
+    {
+        static string title = "Game Complete";
+        static string content = "Game all done!";
+        static List<string> data = new List<string> { title, content, "", "" };
+
+        public YouWinTheGame(WindowManager winMgr)
+            : base(winMgr, data)
+        {
         }
     }
 
@@ -127,7 +143,19 @@ public class GameFlow : MonoBehaviour
     {
         if (obj == TrafficLogic.LogicState.Succeeded)
         {
-            StartCoroutine(WaitAndShow(2, () => new YouWin(windowManager)));
+            if (Next == actionPanel.gameLevel)
+            {
+                StartCoroutine(WaitAndShow(2, () => new YouWinTheGame(windowManager)));
+            }
+            else
+            {
+                StartCoroutine(WaitAndShow(2, delegate
+                {
+                    YouWin youWin = new YouWin(windowManager);
+                    youWin.nextLevel = () => StartLevel(Next);
+                    return youWin;
+                }));
+            }
         }
         else if (obj == TrafficLogic.LogicState.Failed)
         {
@@ -157,12 +185,31 @@ public class GameFlow : MonoBehaviour
     public void SetTrafficLogic(object trafficLogicInput)
     {
         TrafficLogic nextTrafficLogic = trafficLogicInput as TrafficLogic;
-        nextTrafficLogic.OnStateChange += new System.Action<TrafficLogic.LogicState>(trafficLogic_OnStateChange);
+        nextTrafficLogic.OnStateChange += new Action<TrafficLogic.LogicState>(trafficLogic_OnStateChange);
     }
 
     private void StartLevel(GameLevel gameLevel)
     {
+        actionPanel.SendMessage("Reset");
         actionPanel.gameLevel = gameLevel;
         gameLevel.SendMessage("StartLevel", this);
+    }
+
+    private GameLevel Current { get
+        {
+            return actionPanel.gameLevel;
+        } }
+
+    private GameLevel Next
+    {
+        get
+        {
+            int idx = gameLevels.FindIndex((gamelevel) => actionPanel.gameLevel);
+            if (idx < gameLevels.Count)
+            {
+                return gameLevels[idx + 1];
+            }
+            return actionPanel.gameLevel;
+        }
     }
 }

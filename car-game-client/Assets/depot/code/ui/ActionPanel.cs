@@ -146,4 +146,12 @@ public class ActionPanel : MonoBehaviour
             gameLevel.SendMessage("Reset", null, SendMessageOptions.RequireReceiver);
         }
     }
+
+    private void Reset()
+    {
+        m_actionList.ForEach(a => GameObject.DestroyImmediate(a.gameObject));
+        m_actionList.Clear();
+        m_activePlayback = false;
+        UpdateVisible();
+    }
 }

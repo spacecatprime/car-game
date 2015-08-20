@@ -4,19 +4,15 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-class TrafficLogic : MonoBehaviour 
+public class TrafficLogic : MonoBehaviour 
 {
     //
     // to be set by editor
     public Transform grid = null;
     public Transform car = null;
     public Transform notification = null;
+    public FXManager fxManager = null;
 
-    public AudioClip sfxForward;
-    public AudioClip sfxBonk;
-    public AudioClip sfxTurn;
-    public AudioSource sfxSource;
-    
     //
     // playback data
     Vector3 m_originalPos;
@@ -39,35 +35,46 @@ class TrafficLogic : MonoBehaviour
     };
     public Operation Mode { get; private set; }
 
-    public enum OperationState
+    #region LOGIC STATE
+
+    public enum LogicState
     {
-        Idle,
+        Idle,       // nothing happening, yet
         Playing,    // real-time playback in progress
-        Paused,     // paused during real-time playback
-        Stepped,    // waiting for the next Step op command
-        Finished,   // done as far as the steps can be
-        InError     // car crash or some logic error happened
+        Succeeded,  // Succeeded - done as far as the steps can be
+        Failed      // Failed - car crash or some logic error happened
     };
-    public OperationState State { get; private set; }
-
-    public class Result
+    private LogicState m_state = LogicState.Idle;
+    public LogicState State 
     {
-        public bool inError { get; set; }
-        public TrafficLogic logic { get; set; }
+        get
+        {
+            return m_state;
+        }
+        private set
+        {
+            if (OnStateChange != null && m_state != value)
+            {
+                OnStateChange(value);
+            }
+            m_state = value;
+        }
     }
+    public event Action<LogicState> OnStateChange;
 
-    public event Action<Result> OnOperationChange;
-    public event Action<Result> OnStateChange;
-
-    void FinishLineTriggered(object line)
+    void FinishLineTriggered()
     {
         m_noteboard.AddNote("Finish Hit!");
+        State = LogicState.Succeeded;
     }
+
+    #endregion
 
     //
     // action data such as moves and cursor into moves
     private List<MoveType> m_moveList = new List<MoveType>();
     private List<MoveType>.Enumerator m_moveCursor;
+    private Coroutine m_moveCoroutine;
 
     public bool SetOperation(Operation op)
     {
@@ -110,7 +117,7 @@ class TrafficLogic : MonoBehaviour
             case Operation.Reset:
                 ResetBoard();
                 Mode = Operation.Reset;
-                sfxSource.PlayOneShot(sfxBonk);
+                fxManager.audioFX.PlaySound(AudioFX.Sounds.Bonk);
                 break;
 
             case Operation.Playback:
@@ -141,7 +148,6 @@ class TrafficLogic : MonoBehaviour
         {
             ResetBoard();
             m_noteboard.AddNote(op.ToString());
-            State = OperationState.Stepped;
             return true;
         }
         else if (op == Operation.StepUp)
@@ -152,7 +158,6 @@ class TrafficLogic : MonoBehaviour
                 OperateCar(m_moveCursor.Current);
             }
             m_noteboard.AddNote(op.ToString());
-            State = OperationState.Stepped;
             return isOk;
         }
         else if (op == Operation.StepBack)
@@ -164,7 +169,6 @@ class TrafficLogic : MonoBehaviour
                 m_moveCursor.MoveNext();
                 pos--;
             }
-            State = OperationState.Stepped;
             return true;
         }
         return false;
@@ -191,16 +195,17 @@ class TrafficLogic : MonoBehaviour
             dir = GGDirection.Down;
         }
         var nextCell = m_car.Cell.GetCellInDirection(dir);
-        if (nextCell.IsPathable == false)
+        if (nextCell == null || nextCell.IsPathable == false)
         {
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Bonk);
+            fxManager.particleFX.Run(ParticleFX.Effects.Explosion, car.position);
             m_noteboard.AddNote("Oops!");
-            sfxSource.PlayOneShot(this.sfxBonk);
-            State = OperationState.InError;
+            State = LogicState.Failed;
         }
         else
         {
             iTween.MoveTo(m_car.gameObject, nextCell.CenterPoint3D, 1.0f);
-            sfxSource.PlayOneShot(this.sfxForward);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Forward);
         }
     }
 
@@ -209,12 +214,12 @@ class TrafficLogic : MonoBehaviour
         if( moveType.kind == MoveType.MoveKind.TurnLeft)
         {
             iTween.RotateAdd(m_car.gameObject, new Vector3(0, -90, 0), 1.0f);
-            sfxSource.PlayOneShot(this.sfxTurn);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Turn);
         }
         else if (moveType.kind == MoveType.MoveKind.TurnRight)
         {
             iTween.RotateAdd(m_car.gameObject, new Vector3(0, 90, 0), 1.0f);
-            sfxSource.PlayOneShot(this.sfxTurn);
+            fxManager.audioFX.PlaySound(AudioFX.Sounds.Turn);
         }
         else
         {
@@ -224,8 +229,8 @@ class TrafficLogic : MonoBehaviour
 
     private bool OperateRealTime(Operation op)
     {
-        StartCoroutine(MoveAllMoves());
-        State = OperationState.Playing;
+        State = LogicState.Playing;
+        m_moveCoroutine = StartCoroutine(MoveAllMoves());
         return true;
     }
 
@@ -233,21 +238,39 @@ class TrafficLogic : MonoBehaviour
     {
         foreach (var move in m_moveList)
         {
+            if (State != LogicState.Playing)
+            {
+                break;
+            }
             OperateCar(move);
             yield return new WaitForSeconds(1);
+        }
+        if (State == LogicState.Playing)
+        {
+            State = LogicState.Failed;
+            m_noteboard.AddNote("Out of moves...");
         }
     }
 
     private void ResetBoard()
     {
+        // reset the car
+        iTween.MoveTo(m_car.gameObject, m_originalPos, 1.0f);
+        iTween.RotateTo(m_car.gameObject, m_originalRot.eulerAngles, 1.0f);
+
+        // reset the recorded move list
+        m_moveList.Clear();
         m_moveCursor = m_moveList.GetEnumerator();
-        m_car.CachedTransform.position = new Vector3(m_originalPos.x, m_originalPos.y, m_originalPos.z);
-        m_car.CachedTransform.rotation = new Quaternion(m_originalRot.x, m_originalRot.y, m_originalRot.z, m_originalRot.w);
+        if (m_moveCoroutine != null)
+        {
+            StopCoroutine(m_moveCoroutine);
+            m_moveCoroutine = null;
+        }
     }
 
     void Start () 
 	{
-        State = OperationState.Idle;
+        State = LogicState.Idle;
         Mode = Operation.Reset;
         m_originalPos = car.transform.position;
         m_originalRot = car.transform.rotation;

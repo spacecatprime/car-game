@@ -7,18 +7,44 @@ using System.Collections.Generic;
 public class ActionPanel : MonoBehaviour 
 {
     public RectTransform playBoard;
-    public Transform logic;
+    public GameLevel gameLevel;
 
     private List<RectTransform> m_actionList = new List<RectTransform>();
-    private TrafficLogic m_trafficLogic;
 
-    // TMP
+    private Button buttonStart;
+    private Button buttonStop;
+    private Button buttonUndo;
+    private List<Button> buttonListOperations;
+    
+    // Active Playback or not
     private bool m_activePlayback = false;
 
 	void Start () 
 	{
-        m_trafficLogic = logic.GetComponent<TrafficLogic>();
-	}
+        buttonStart = GetButtonByTag("GameController");
+        buttonStop = GetButtonByTag("Finish");
+        buttonUndo = GetButtonByTag("undo");
+        buttonListOperations = GetButtonListByTag("operation");
+        UpdateVisible();
+    }
+
+    private void UpdateVisible()
+    {
+        if (m_activePlayback)
+        {
+            buttonStart.gameObject.SetActive(false);
+            buttonStop.gameObject.SetActive(true);
+            buttonUndo.gameObject.SetActive(false);
+            buttonListOperations.ForEach(b => b.gameObject.SetActive(false));
+        }
+        else
+        {
+            buttonStart.gameObject.SetActive(true);
+            buttonStop.gameObject.SetActive(false);
+            buttonUndo.gameObject.SetActive(true);
+            buttonListOperations.ForEach(b => b.gameObject.SetActive(true));
+        }
+    }
 	
 	void Update () 
 	{
@@ -27,9 +53,10 @@ public class ActionPanel : MonoBehaviour
     private void PushButton(string prefabName)
     {
         RectTransform prefab = Resources.Load<RectTransform>(prefabName);
-        RectTransform button = Instantiate<RectTransform>(prefab);
-        button.SetParent(playBoard);
-        m_actionList.Add(button);
+        RectTransform actionImg = Instantiate<RectTransform>(prefab);
+        GameObject.Destroy(actionImg.gameObject.GetComponent<Button>());
+        actionImg.SetParent(playBoard);
+        m_actionList.Add(actionImg);
     }
 
     private void PopButton()
@@ -57,20 +84,53 @@ public class ActionPanel : MonoBehaviour
         PushButton("ui_go_forward");
     }
 
+    private Button GetButtonByTag(string tag)
+    {
+        Button[] list = this.GetComponentsInChildren<Button>();
+        foreach (Button b in list)
+        {
+            if (b.tag == tag)
+            {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    private List<Button> GetButtonListByTag(string tag)
+    {
+        var buttonList = new List<Button>();
+        Button[] list = this.GetComponentsInChildren<Button>();
+        foreach (Button b in list)
+        {
+            if (b.tag == tag)
+            {
+                buttonList.Add(b);
+            }
+        }
+        return buttonList;
+    }
+
+    public void DoStep()
+    {
+        gameLevel.SendMessage("StepUp", null, SendMessageOptions.RequireReceiver);
+    }
+
 	public void DoExecute()
 	{
-        //PushButton("ui_go_execute");
-        // should be changed to TrafficLogic.Operation.Playback at some point
-
-        if (m_activePlayback)
-        {
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.StepUp);
-        }
-        else
+        if (!m_activePlayback)
         {
             m_activePlayback = true;
-//            m_trafficLogic.SetOperation(TrafficLogic.Operation.TurnByTurn, m_actionList);
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.Playback, m_actionList);
+            UpdateVisible();
+            gameLevel.SendMessage("Playback", m_actionList, SendMessageOptions.RequireReceiver);
+        }
+    }
+
+    public void DoUndo()
+    {
+        if (!m_activePlayback)
+        {
+            PopButton();
         }
     }
 
@@ -82,11 +142,16 @@ public class ActionPanel : MonoBehaviour
             m_actionList.Clear();
 
             m_activePlayback = false;
-            m_trafficLogic.SetOperation(TrafficLogic.Operation.Reset);
+            UpdateVisible();
+            gameLevel.SendMessage("Reset", null, SendMessageOptions.RequireReceiver);
         }
-        else
-        {
-            PopButton();
-        }
+    }
+
+    private void Reset()
+    {
+        m_actionList.ForEach(a => GameObject.DestroyImmediate(a.gameObject));
+        m_actionList.Clear();
+        m_activePlayback = false;
+        UpdateVisible();
     }
 }

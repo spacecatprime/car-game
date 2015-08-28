@@ -124,14 +124,22 @@ public class GameFlow : MonoBehaviour
         static string okay = "okay";
         static List<string> data = new List<string> { title, content, okay, "" };
 
-        public YouLost(WindowManager winMgr)
+        public ActionPanel actionPanel;
+
+        public YouLost(WindowManager winMgr, ActionPanel ap)
             : base(winMgr, data)
         {
+            actionPanel = ap;
+        }
+        public override void ButtonOne(object data)
+        {
+            base.ButtonOne(data);
+            actionPanel.SendMessage(ActionPanel.k_Reset);
         }
     }
 
-	// Use this for initialization
-	void Start () 
+    // Use this for initialization
+    void Start () 
     {
         this.StartLevel(gameLevels[0]);
 
@@ -159,7 +167,7 @@ public class GameFlow : MonoBehaviour
         }
         else if (obj == TrafficLogic.LogicState.Failed)
         {
-            StartCoroutine(WaitAndShow(2, () => new YouLost(windowManager)));
+            StartCoroutine(WaitAndShow(2, () => new YouLost(windowManager, actionPanel)));
         }
     }
 

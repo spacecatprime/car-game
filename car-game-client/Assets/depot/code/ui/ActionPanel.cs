@@ -1,18 +1,20 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using Assets.depot.code.ui;
 
 // http://docs.unity3d.com/Manual/HOWTO-UICreateFromScripting.html
 
 public class ActionPanel : MonoBehaviour 
 {
+    public static string k_Reset = "Reset";
+    public static string k_Playback = "Playback";
+
     public RectTransform playBoard;
     public GameLevel gameLevel;
+    public PlaybackPanel playbackPanel;
 
     private List<RectTransform> m_actionList = new List<RectTransform>();
-
-    private Button buttonStart;
-    private Button buttonStop;
     private Button buttonUndo;
     private List<Button> buttonListOperations;
     
@@ -21,8 +23,6 @@ public class ActionPanel : MonoBehaviour
 
 	void Start () 
 	{
-        buttonStart = GetButtonByTag("GameController");
-        buttonStop = GetButtonByTag("Finish");
         buttonUndo = GetButtonByTag("undo");
         buttonListOperations = GetButtonListByTag("operation");
         UpdateVisible();
@@ -32,15 +32,11 @@ public class ActionPanel : MonoBehaviour
     {
         if (m_activePlayback)
         {
-            buttonStart.gameObject.SetActive(false);
-            buttonStop.gameObject.SetActive(true);
             buttonUndo.gameObject.SetActive(false);
             buttonListOperations.ForEach(b => b.gameObject.SetActive(false));
         }
         else
         {
-            buttonStart.gameObject.SetActive(true);
-            buttonStop.gameObject.SetActive(false);
             buttonUndo.gameObject.SetActive(true);
             buttonListOperations.ForEach(b => b.gameObject.SetActive(true));
         }
@@ -138,12 +134,7 @@ public class ActionPanel : MonoBehaviour
 	{
         if (m_activePlayback)
         {
-            m_actionList.ForEach(a => GameObject.DestroyImmediate(a.gameObject));
-            m_actionList.Clear();
-
-            m_activePlayback = false;
-            UpdateVisible();
-            gameLevel.SendMessage("Reset", null, SendMessageOptions.RequireReceiver);
+            Reset();
         }
     }
 
@@ -153,5 +144,7 @@ public class ActionPanel : MonoBehaviour
         m_actionList.Clear();
         m_activePlayback = false;
         UpdateVisible();
+        playbackPanel.SendMessage("Reset");
+        gameLevel.SendMessage("Reset", null, SendMessageOptions.RequireReceiver);
     }
 }
